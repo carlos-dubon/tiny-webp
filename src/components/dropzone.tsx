@@ -206,13 +206,13 @@ export const Dropzone = ({
                 {/* View Button */}
                 {fileItem.preview && (
                   <Button
+                    className="size-7"
                     onClick={() => {
                       setSelectedImage(fileItem.preview!)
                       setIsPreviewLoading(true)
                     }}
                     variant="secondary"
                     size="icon"
-                    className="size-7"
                   >
                     <HugeiconsIcon icon={ZoomIn} className="opacity-100/80" />
                   </Button>
@@ -228,7 +228,7 @@ export const Dropzone = ({
                 </Button>
               </div>
               {/* File Info */}
-              <div className="absolute right-0 bottom-0 left-0 rounded-b-lg bg-black/70 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="pointer-events-none absolute right-0 bottom-0 left-0 rounded-b-lg bg-black/70 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
                 <p className="truncate text-xs font-medium">
                   {fileItem.file.name}
                 </p>
