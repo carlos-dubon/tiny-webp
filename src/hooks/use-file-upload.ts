@@ -1,6 +1,9 @@
+import { fileUploadStateAtom } from "@/state/file-upload-state"
+import { useAtom } from "jotai"
 import type React from "react"
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -70,16 +73,21 @@ export const useFileUpload = (
     onFilesAdded,
     onError,
   } = options
+  const [state, setState] = useAtom(fileUploadStateAtom)
 
-  const [state, setState] = useState<FileUploadState>({
-    files: initialFiles.map((file) => ({
-      file,
-      id: file.id,
-      preview: file.url,
-    })),
-    isDragging: false,
-    errors: [],
-  })
+  useEffect(() => {
+    if (initialFiles.length > 0) {
+      setState({
+        files: initialFiles.map((file) => ({
+          file,
+          id: file.id,
+          preview: file.url,
+        })),
+        isDragging: false,
+        errors: [],
+      })
+    }
+  }, [initialFiles, setState])
 
   const inputRef = useRef<HTMLInputElement>(null)
 
