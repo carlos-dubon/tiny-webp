@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState, type DragEvent as ReactDragEvent } from "react"
 import {
   formatBytes,
   useFileUpload,
@@ -46,30 +46,6 @@ export const Dropzone = ({
     {}
   )
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
-  // Create default images using FileMetadata type
-  const defaultImages: FileMetadata[] = [
-    {
-      id: "default-1",
-      name: "avatar-1.png",
-      size: 44608,
-      type: "image/png",
-      url: "https://picsum.photos/1000/800?random=1",
-    },
-    {
-      id: "default-2",
-      name: "avatar-2.png",
-      size: 42144,
-      type: "image/png",
-      url: "https://picsum.photos/1000/800?random=2",
-    },
-    {
-      id: "default-3",
-      name: "avatar-2.png",
-      size: 42144,
-      type: "image/png",
-      url: "https://picsum.photos/1000/800?random=3",
-    },
-  ]
   const [
     { files, isDragging, errors },
     {
@@ -87,7 +63,6 @@ export const Dropzone = ({
     maxSize,
     accept,
     multiple,
-    initialFiles: defaultImages,
     onFilesChange,
   })
   const isImage = (file: File | FileMetadata) => {
@@ -95,8 +70,44 @@ export const Dropzone = ({
     return type.startsWith("image/")
   }
 
+  useEffect(() => {
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleDragOver(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleDrop(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      handleDragEnter(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      handleDragLeave(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    window.addEventListener("dragover", handleWindowDragOver)
+    window.addEventListener("drop", handleWindowDrop)
+    window.addEventListener("dragenter", handleWindowDragEnter)
+    window.addEventListener("dragleave", handleWindowDragLeave)
+
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver)
+      window.removeEventListener("drop", handleWindowDrop)
+      window.removeEventListener("dragenter", handleWindowDragEnter)
+      window.removeEventListener("dragleave", handleWindowDragLeave)
+    }
+  }, [])
+
   return (
-    <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-4">
+    <div className="items-center rounded-2xl border border-border bg-card p-4">
       {/* Upload Area */}
       <div
         className={cn(
@@ -147,7 +158,7 @@ export const Dropzone = ({
         <div className="mt-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h4 className="text-sm font-medium">
-              Gallery ({files.length}/{maxFiles})
+              Selected files ({files.length}/{maxFiles})
             </h4>
             <div className="text-xs text-muted-foreground">
               Total:{" "}
@@ -167,7 +178,7 @@ export const Dropzone = ({
           {files.map((fileItem) => (
             <div
               key={fileItem.id}
-              className="group/item relative aspect-square"
+              className="group/item relative aspect-square overflow-hidden rounded-lg"
             >
               {isImage(fileItem.file) && fileItem.preview ? (
                 <>
@@ -226,15 +237,6 @@ export const Dropzone = ({
                 >
                   <HugeiconsIcon icon={X} className="opacity-100/80" />
                 </Button>
-              </div>
-              {/* File Info */}
-              <div className="pointer-events-none absolute right-0 bottom-0 left-0 rounded-b-lg bg-black/70 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100">
-                <p className="truncate text-xs font-medium">
-                  {fileItem.file.name}
-                </p>
-                <p className="text-xs text-gray-300">
-                  {formatBytes(fileItem.file.size)}
-                </p>
               </div>
             </div>
           ))}
