@@ -50,37 +50,7 @@ export function Dropzone({
   className,
   onFilesChange,
 }: ProgressUploadProps) {
-  // Create default images using FileMetadata type
-  const defaultImages: FileMetadata[] = [
-    {
-      id: "default-3",
-      name: "image-1.png",
-      size: 42048,
-      type: "image/png",
-      url: "https://picsum.photos/1000/800?grayscale&random=10",
-    },
-    {
-      id: "default-4",
-      name: "image-2.png",
-      size: 62807,
-      type: "image/png",
-      url: "https://picsum.photos/1000/800?grayscale&random=11",
-    },
-  ]
-  // Convert default images to FileUploadItem format
-  const defaultUploadFiles: FileUploadItem[] = defaultImages.map((image) => ({
-    id: image.id,
-    file: {
-      name: image.name,
-      size: image.size,
-      type: image.type,
-    } as File,
-    preview: image.url,
-    progress: 100,
-    status: "completed" as const,
-  }))
-  const [uploadFiles, setUploadFiles] =
-    useState<FileUploadItem[]>(defaultUploadFiles)
+  const [uploadFiles, setUploadFiles] = useState<FileUploadItem[]>([])
   const [
     { isDragging, errors },
     {
@@ -98,7 +68,7 @@ export function Dropzone({
     maxSize,
     accept,
     multiple,
-    initialFiles: defaultImages,
+    initialFiles: [],
     onFilesChange: (newFiles) => {
       // Convert to upload items when files change, preserving existing status
       const newUploadFiles = newFiles.map((file) => {
