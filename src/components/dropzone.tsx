@@ -243,38 +243,6 @@ export function Dropzone({
       return (
         <HugeiconsIcon icon={ImageIcon} strokeWidth={2} className="size-4" />
       )
-    if (type.startsWith("video/"))
-      return (
-        <HugeiconsIcon icon={Video02Icon} strokeWidth={2} className="size-4" />
-      )
-    if (type.startsWith("audio/"))
-      return (
-        <HugeiconsIcon
-          icon={HeadphonesIcon}
-          strokeWidth={2}
-          className="size-4"
-        />
-      )
-    if (type.includes("pdf"))
-      return (
-        <HugeiconsIcon icon={File02Icon} strokeWidth={2} className="size-4" />
-      )
-    if (type.includes("word") || type.includes("doc"))
-      return (
-        <HugeiconsIcon icon={File02Icon} strokeWidth={2} className="size-4" />
-      )
-    if (type.includes("excel") || type.includes("sheet"))
-      return (
-        <HugeiconsIcon
-          icon={GoogleSheetIcon}
-          strokeWidth={2}
-          className="size-4"
-        />
-      )
-    if (type.includes("zip") || type.includes("rar"))
-      return (
-        <HugeiconsIcon icon={ArchiveIcon} strokeWidth={2} className="size-4" />
-      )
     return (
       <HugeiconsIcon icon={File02Icon} strokeWidth={2} className="size-4" />
     )
