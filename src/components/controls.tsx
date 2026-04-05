@@ -32,17 +32,19 @@ export const Controls = () => {
         const file = fileWrapper.file as File
         const originalSize = file.size
 
-        const image = await fileToImage(file)
-        const source = document.createElement("canvas")
+        const source = await fileToImage(file)
+        const destination = document.createElement("canvas")
 
         // Resize (optional, keep if you want)
         // const maxWidth = 800
-        // const scale = Math.min(1, maxWidth / image.width)
+        // const scale = Math.min(1, maxWidth / source.width)
 
-        // source.width = image.width * scale
-        // source.height = image.height * scale
+        destination.width = source.width
+        destination.height = source.height
+        // destination.width = destination.width * scale
+        // destination.height = destination.height * scale
 
-        const canvas = await picaInstance.resize(image, source)
+        const canvas = await picaInstance.resize(source, destination)
         const blob = await picaInstance.toBlob(canvas, "image/webp", 0.8)
         const newSize = blob.size
 
