@@ -43,7 +43,7 @@ interface ProgressUploadProps {
 }
 export function Dropzone({
   maxFiles = 5,
-  maxSize = 10 * 1024 * 1024, // 10MB
+  maxSize = 50 * 1024 * 1024, // 50MB
   accept = "image/jpeg,image/png,image/webp,image/avif,image/gif",
   multiple = true,
   className,
