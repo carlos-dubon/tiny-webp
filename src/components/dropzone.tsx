@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import JSZip from "jszip"
 import {
   formatBytes,
   useFileUpload,
@@ -248,6 +249,31 @@ export function Dropzone({
   const uploadingCount = uploadFiles.filter(
     (f) => f.status === "uploading"
   ).length
+
+  const downloadAllFiles = async () => {
+    const zip = new JSZip()
+    const timestamp = Date.now()
+
+    // Add all files to zip
+    for (const file of uploadFiles) {
+      if (file.preview) {
+        const response = await fetch(file.preview)
+        const blob = await response.blob()
+        zip.file(file.file.name, blob)
+      }
+    }
+
+    // Generate and download zip
+    const zipBlob = await zip.generateAsync({ type: "blob" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(zipBlob)
+    link.download = `compressed-images-${timestamp}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(link.href)
+  }
+
   return (
     <div className={cn("w-full", className)}>
       {/* Upload Area */}
@@ -322,9 +348,24 @@ export function Dropzone({
               )}
             </div>
           </div>
-          <Button onClick={clearFiles} variant="outline" size="sm">
-            Clear all
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={downloadAllFiles}
+              variant="outline"
+              size="sm"
+              disabled={uploadFiles.length === 0}
+            >
+              <HugeiconsIcon
+                icon={Upload01Icon}
+                strokeWidth={2}
+                className="h-4 w-4"
+              />
+              Download all
+            </Button>
+            <Button onClick={clearFiles} variant="outline" size="sm">
+              Clear all
+            </Button>
+          </div>
         </div>
       )}
       {/* File List */}
