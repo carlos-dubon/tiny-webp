@@ -328,9 +328,11 @@ export function Dropzone({
       {uploadFiles.length > 0 && (
         <div className="mt-4 space-y-3">
           {uploadFiles.map((fileItem: FileUploadItem) => (
-            <div
+            <a
+              href={fileItem.preview}
+              download={`${fileItem.file.name}-compressed.webp`}
               key={fileItem.id}
-              className="rounded-lg border border-border bg-card p-2.5"
+              className="block rounded-lg border border-border bg-card p-2.5"
             >
               <div className="flex items-start gap-2.5">
                 {/* File Icon */}
@@ -408,7 +410,7 @@ export function Dropzone({
                   )}
                 </div>
               </div>
-            </div>
+            </a>
           ))}
         </div>
       )}
