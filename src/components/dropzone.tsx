@@ -80,11 +80,8 @@ export function Dropzone({
           (existing) => existing.id === file.id
         )
         if (existingFile) {
-          // Preserve existing file status and progress
-          return {
-            ...existingFile,
-            ...file, // Update any changed properties from the file
-          }
+          // Keep existing file as-is (preserves compressed state)
+          return existingFile
         } else {
           // New file - set to uploading
           return {
@@ -183,7 +180,7 @@ export function Dropzone({
     }
 
     compressFiles()
-  }, [uploadFiles])
+  }, [uploadFiles, config])
 
   useEffect(() => {
     const handleWindowDragOver = (e: DragEvent) => {
