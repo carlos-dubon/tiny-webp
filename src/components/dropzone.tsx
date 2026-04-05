@@ -1,7 +1,6 @@
 import { useEffect, useState, type DragEvent as ReactDragEvent } from "react"
 import JSZip from "jszip"
 import {
-  formatBytes,
   useFileUpload,
   type FileMetadata,
   type FileWithPreview,
@@ -20,16 +19,13 @@ import { Progress } from "@/components/ui/progress"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
-  ArchiveIcon,
   File02Icon,
-  GoogleSheetIcon,
-  HeadphonesIcon,
   ImageIcon,
   MultiplicationSignIcon,
   Refresh04Icon,
   Upload01Icon,
-  Video02Icon,
 } from "@hugeicons/core-free-icons"
+import { formatBytes } from "@/lib/format-bytes"
 interface FileUploadItem extends FileWithPreview {
   progress: number
   status: "uploading" | "completed" | "error"
