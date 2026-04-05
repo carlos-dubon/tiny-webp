@@ -1,9 +1,14 @@
 import pica from "pica"
 import { fileToImage } from "./file-to-image"
+import { ImageQuality } from "@/state/config"
 
 const picaInstance = pica()
 
-export async function compress(file: File) {
+interface Config {
+  quality: keyof typeof ImageQuality
+}
+
+export async function compress(file: File, config?: Config) {
   const originalSize = file.size
 
   const source = await fileToImage(file)
@@ -19,7 +24,11 @@ export async function compress(file: File) {
   // destination.height = destination.height * scale
 
   const canvas = await picaInstance.resize(source, destination)
-  const blob = await picaInstance.toBlob(canvas, "image/webp", 0.8)
+  const blob = await picaInstance.toBlob(
+    canvas,
+    "image/webp",
+    config?.quality ?? 0.8
+  )
   const newSize = blob.size
 
   const savings = ((originalSize - newSize) / originalSize) * 100
