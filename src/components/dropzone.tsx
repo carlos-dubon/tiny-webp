@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type DragEvent as ReactDragEvent } from "react"
 import JSZip from "jszip"
 import {
   formatBytes,
@@ -182,6 +182,43 @@ export function Dropzone({
 
     compressFiles()
   }, [uploadFiles])
+
+  useEffect(() => {
+    const handleWindowDragOver = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleDragOver(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      handleDrop(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      handleDragEnter(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      handleDragLeave(e as unknown as ReactDragEvent<HTMLElement>)
+    }
+
+    window.addEventListener("dragover", handleWindowDragOver)
+    window.addEventListener("drop", handleWindowDrop)
+    window.addEventListener("dragenter", handleWindowDragEnter)
+    window.addEventListener("dragleave", handleWindowDragLeave)
+
+    return () => {
+      window.removeEventListener("dragover", handleWindowDragOver)
+      window.removeEventListener("drop", handleWindowDrop)
+      window.removeEventListener("dragenter", handleWindowDragEnter)
+      window.removeEventListener("dragleave", handleWindowDragLeave)
+    }
+  }, [])
+
   const retryUpload = (fileId: string) => {
     setUploadFiles((prev) =>
       prev.map((file) =>
@@ -279,7 +316,7 @@ export function Dropzone({
       {/* Upload Area */}
       <div
         className={cn(
-          "relative rounded-lg border border-dashed p-8 text-center transition-colors",
+          "relative rounded-lg border border-dashed bg-background p-8 text-center transition-colors",
           isDragging
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50"
