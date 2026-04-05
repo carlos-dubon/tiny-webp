@@ -34,6 +34,7 @@ interface FileUploadItem extends FileWithPreview {
   status: "uploading" | "completed" | "error"
   error?: string
   originalSize?: number
+  progressInitialized?: boolean
 }
 interface ProgressUploadProps {
   maxFiles?: number
@@ -89,6 +90,7 @@ export function Dropzone({
             ...file,
             originalSize: file.file.size,
             progress: 0,
+            progressInitialized: false,
             status: "uploading" as const,
           }
         }
@@ -104,17 +106,34 @@ export function Dropzone({
         (f) => f.status === "uploading" && f.file instanceof File
       )
 
+      // Set random progress for uninitialized files
+      const hasUninitialized = filesToCompress.some(
+        (f) => !f.progressInitialized
+      )
+
+      if (hasUninitialized) {
+        // Update state with random progress
+        setUploadFiles((prev) =>
+          prev.map((f) => {
+            const needsInit = filesToCompress.find(
+              (ftp) => ftp.id === f.id && !ftp.progressInitialized
+            )
+            if (needsInit) {
+              return {
+                ...f,
+                progress: Math.floor(Math.random() * 41) + 10,
+                progressInitialized: true,
+              }
+            }
+            return f
+          })
+        )
+        return // Wait for next effect run to compress
+      }
+
       await Promise.all(
         filesToCompress.map(async (file) => {
           try {
-            // Set progress to random number between 10-50
-            const randomProgress = Math.floor(Math.random() * 41) + 10
-            setUploadFiles((prev) =>
-              prev.map((f) =>
-                f.id === file.id ? { ...f, progress: randomProgress } : f
-              )
-            )
-
             // Run compression
             const result = await compress(file.file as File)
 
@@ -309,9 +328,9 @@ export function Dropzone({
           {uploadFiles.map((fileItem: FileUploadItem) => (
             <a
               href={fileItem.preview}
-              download={`${fileItem.file.name}-compressed.webp`}
+              download={fileItem.file.name}
               key={fileItem.id}
-              className="block rounded-lg border border-border bg-card p-2.5"
+              className="block rounded-lg border border-border bg-card p-2.5 transition-colors hover:bg-card/60"
             >
               <div className="flex items-start gap-2.5">
                 {/* File Icon */}
@@ -355,7 +374,11 @@ export function Dropzone({
                     <div className="flex items-center gap-2">
                       {/* Remove Button */}
                       <Button
-                        onClick={() => removeUploadFile(fileItem.id)}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          removeUploadFile(fileItem.id)
+                        }}
                         variant="ghost"
                         size="icon"
                         className="size-6 text-muted-foreground hover:bg-transparent hover:opacity-100"
