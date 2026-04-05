@@ -100,16 +100,23 @@ export function Dropzone({
   // Compress images when they're added
   useEffect(() => {
     const compressFiles = async () => {
-      for (const file of uploadFiles) {
-        if (file.status === "uploading" && file.file instanceof File) {
+      const filesToCompress = uploadFiles.filter(
+        (f) => f.status === "uploading" && f.file instanceof File
+      )
+
+      await Promise.all(
+        filesToCompress.map(async (file) => {
           try {
-            // Set progress to show compression is happening
+            // Set progress to random number between 10-50
+            const randomProgress = Math.floor(Math.random() * 41) + 10
             setUploadFiles((prev) =>
-              prev.map((f) => (f.id === file.id ? { ...f, progress: 50 } : f))
+              prev.map((f) =>
+                f.id === file.id ? { ...f, progress: randomProgress } : f
+              )
             )
 
             // Run compression
-            const result = await compress(file.file)
+            const result = await compress(file.file as File)
 
             // Update with completed status
             setUploadFiles((prev) =>
@@ -144,8 +151,8 @@ export function Dropzone({
               )
             )
           }
-        }
-      }
+        })
+      )
     }
 
     compressFiles()
