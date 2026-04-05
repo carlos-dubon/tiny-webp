@@ -5,6 +5,7 @@ import {
   type FileMetadata,
   type FileWithPreview,
 } from "@/hooks/use-file-upload"
+import { compress } from "@/lib/compress"
 import {
   Alert,
   AlertAction,
@@ -40,16 +41,14 @@ interface ProgressUploadProps {
   multiple?: boolean
   className?: string
   onFilesChange?: (files: FileWithPreview[]) => void
-  simulateUpload?: boolean
 }
 export function Dropzone({
   maxFiles = 5,
   maxSize = 10 * 1024 * 1024, // 10MB
-  accept = "*",
+  accept = "image/jpeg,image/png,image/webp,image/avif,image/gif",
   multiple = true,
   className,
   onFilesChange,
-  simulateUpload = true,
 }: ProgressUploadProps) {
   // Create default images using FileMetadata type
   const defaultImages: FileMetadata[] = [
@@ -126,40 +125,59 @@ export function Dropzone({
       onFilesChange?.(newFiles)
     },
   })
-  // Simulate upload progress
+  // Compress images when they're added
   useEffect(() => {
-    if (!simulateUpload) return
-    const interval = setInterval(() => {
-      setUploadFiles((prev) =>
-        prev.map((file) => {
-          if (file.status !== "uploading") return file
-          const increment = Math.random() * 15 + 5 // 5-20% increment
-          const newProgress = Math.min(file.progress + increment, 100)
-          // Simulate occasional errors (10% chance when progress > 50%)
-          if (newProgress > 50 && Math.random() < 0.1) {
-            return {
-              ...file,
-              status: "error" as const,
-              error: "Upload failed. Please try again.",
-            }
+    const compressFiles = async () => {
+      for (const file of uploadFiles) {
+        if (file.status === "uploading" && file.file instanceof File) {
+          try {
+            // Set progress to show compression is happening
+            setUploadFiles((prev) =>
+              prev.map((f) => (f.id === file.id ? { ...f, progress: 50 } : f))
+            )
+
+            // Run compression
+            const result = await compress(file.file)
+
+            // Update with completed status
+            setUploadFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id
+                  ? {
+                      ...f,
+                      progress: 100,
+                      status: "completed" as const,
+                      preview: result.url,
+                      file: {
+                        ...f.file,
+                        name: result.name,
+                        size: result.newSize,
+                        type: "image/webp",
+                      },
+                    }
+                  : f
+              )
+            )
+          } catch (error) {
+            // Handle compression error
+            setUploadFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id
+                  ? {
+                      ...f,
+                      status: "error" as const,
+                      error: "Compression failed. Please try again.",
+                    }
+                  : f
+              )
+            )
           }
-          // Complete when progress reaches 100%
-          if (newProgress >= 100) {
-            return {
-              ...file,
-              progress: 100,
-              status: "completed" as const,
-            }
-          }
-          return {
-            ...file,
-            progress: newProgress,
-          }
-        })
-      )
-    }, 500)
-    return () => clearInterval(interval)
-  }, [simulateUpload])
+        }
+      }
+    }
+
+    compressFiles()
+  }, [uploadFiles])
   const retryUpload = (fileId: string) => {
     setUploadFiles((prev) =>
       prev.map((file) =>
