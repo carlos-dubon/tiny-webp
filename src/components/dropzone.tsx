@@ -137,6 +137,11 @@ export function Dropzone({
             // Run compression
             const result = await compress(file.file as File)
 
+            // Add timestamp to compressed filename
+            const timestamp = Date.now()
+            const nameWithoutExtension = result.name.replace(/\.[^/.]+$/, "")
+            const compressedFileName = `${nameWithoutExtension}-${timestamp}-compressed.webp`
+
             // Update with completed status
             setUploadFiles((prev) =>
               prev.map((f) =>
@@ -148,7 +153,7 @@ export function Dropzone({
                       preview: result.url,
                       file: {
                         ...f.file,
-                        name: result.name,
+                        name: compressedFileName,
                         size: result.newSize,
                         type: "image/webp",
                       },
@@ -298,7 +303,7 @@ export function Dropzone({
       {uploadFiles.length > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium">Upload Progress</h4>
+            <h4 className="text-sm font-medium">Compressed Images</h4>
             <div className="flex items-center gap-2">
               {completedCount > 0 && (
                 <Badge size="sm" variant="success-light">
