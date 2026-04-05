@@ -33,6 +33,7 @@ interface FileUploadItem extends FileWithPreview {
   progress: number
   status: "uploading" | "completed" | "error"
   error?: string
+  originalSize?: number
 }
 interface ProgressUploadProps {
   maxFiles?: number
@@ -86,6 +87,7 @@ export function Dropzone({
           // New file - set to uploading
           return {
             ...file,
+            originalSize: file.file.size,
             progress: 0,
             status: "uploading" as const,
           }
@@ -216,7 +218,7 @@ export function Dropzone({
     (f) => f.status === "uploading"
   ).length
   return (
-    <div className={cn("w-full max-w-2xl", className)}>
+    <div className={cn("w-full", className)}>
       {/* Upload Area */}
       <div
         className={cn(
@@ -325,9 +327,23 @@ export function Dropzone({
                   <div className="mt-0.75 flex items-center justify-between">
                     <p className="inline-flex flex-col justify-center gap-1 truncate font-medium">
                       <span className="text-sm">{fileItem.file.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatBytes(fileItem.file.size)}
-                      </span>
+                      {fileItem.status === "completed" &&
+                      fileItem.originalSize ? (
+                        <span className="text-xs text-muted-foreground">
+                          {formatBytes(fileItem.originalSize)} →{" "}
+                          {formatBytes(fileItem.file.size)} (
+                          {Math.round(
+                            ((fileItem.originalSize - fileItem.file.size) /
+                              fileItem.originalSize) *
+                              100
+                          )}
+                          % saved)
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {formatBytes(fileItem.file.size)}
+                        </span>
+                      )}
                     </p>
                     <div className="flex items-center gap-2">
                       {/* Remove Button */}
