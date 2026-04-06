@@ -16,7 +16,12 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "TinyWebP - Free Image Compression Tool",
+      },
+      {
+        name: "description",
+        content:
+          "Compress and convert images to WebP format. Fast, free, and 100% private - all processing happens in your browser.",
       },
     ],
     links: [

@@ -1,34 +1,35 @@
-import pica from "pica"
 import { fileToImage } from "./file-to-image"
 import { ImageQuality } from "@/state/config"
 
-const picaInstance = pica()
-
 interface Config {
   quality: keyof typeof ImageQuality
+  removeMetadata?: boolean
 }
 
 export async function compress(file: File, config?: Config) {
   const originalSize = file.size
 
   const source = await fileToImage(file)
-  const destination = document.createElement("canvas")
+  const canvas = document.createElement("canvas")
 
-  // Resize (optional, keep if you want)
-  // const maxWidth = 800
-  // const scale = Math.min(1, maxWidth / source.width)
+  canvas.width = source.width
+  canvas.height = source.height
 
-  destination.width = source.width
-  destination.height = source.height
-  // destination.width = destination.width * scale
-  // destination.height = destination.height * scale
+  const ctx = canvas.getContext("2d")
+  if (!ctx) throw new Error("Could not get canvas context")
+  ctx.drawImage(source, 0, 0)
 
-  const canvas = await picaInstance.resize(source, destination)
-  const blob = await picaInstance.toBlob(
-    canvas,
-    "image/webp",
-    config?.quality ?? 0.8
-  )
+  // Convert to WebP blob with specified quality
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) reject(new Error("Failed to create blob"))
+        else resolve(blob)
+      },
+      "image/webp",
+      config?.quality ?? 0.8
+    )
+  })
   const newSize = blob.size
 
   const savings = ((originalSize - newSize) / originalSize) * 100
