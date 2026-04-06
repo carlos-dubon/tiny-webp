@@ -10,10 +10,12 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
   ArrowDown01Icon,
+  ArrowDownBigIcon,
   CloudUploadIcon,
   Delete02Icon,
   Download01Icon,
   ImageIcon,
+  Upload06Icon,
 } from "@hugeicons/core-free-icons"
 import { formatBytes } from "@/lib/format-bytes"
 import { Controls } from "./controls"
@@ -318,7 +320,7 @@ export function Dropzone({
             )}
           >
             <HugeiconsIcon
-              icon={isDragging ? ArrowDown01Icon : CloudUploadIcon}
+              icon={isDragging ? ArrowDownBigIcon : Upload06Icon}
               strokeWidth={1.5}
               size={28}
             />
