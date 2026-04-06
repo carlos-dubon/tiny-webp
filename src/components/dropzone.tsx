@@ -8,7 +8,6 @@ import {
 import { compress } from "@/lib/compress"
 import {
   Alert,
-  AlertAction,
   AlertDescription,
   AlertTitle,
 } from "@/components/reui/alert"
@@ -19,16 +18,19 @@ import { Progress } from "@/components/ui/progress"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   AlertCircleIcon,
-  File02Icon,
+  ArrowDown01Icon,
+  CloudUploadIcon,
+  Delete02Icon,
+  Download01Icon,
   ImageIcon,
-  MultiplicationSignIcon,
   Refresh04Icon,
-  Upload01Icon,
+  ArrowRight01Icon,
 } from "@hugeicons/core-free-icons"
 import { formatBytes } from "@/lib/format-bytes"
 import { Controls } from "./controls"
 import { useAtom } from "jotai"
 import { configAtom } from "@/state/config"
+
 interface FileUploadItem extends FileWithPreview {
   progress: number
   status: "uploading" | "completed" | "error"
@@ -36,6 +38,7 @@ interface FileUploadItem extends FileWithPreview {
   originalSize?: number
   progressInitialized?: boolean
 }
+
 interface ProgressUploadProps {
   maxFiles?: number
   maxSize?: number
@@ -44,9 +47,10 @@ interface ProgressUploadProps {
   className?: string
   onFilesChange?: (files: FileWithPreview[]) => void
 }
+
 export function Dropzone({
-  maxFiles = 5,
-  maxSize = 50 * 1024 * 1024, // 50MB
+  maxFiles = 50,
+  maxSize = 50 * 1024 * 1024,
   accept = "image/jpeg,image/png,image/webp,image/avif,image/gif",
   multiple = true,
   className,
@@ -73,17 +77,13 @@ export function Dropzone({
     multiple,
     initialFiles: [],
     onFilesChange: (newFiles) => {
-      // Convert to upload items when files change, preserving existing status
       const newUploadFiles = newFiles.map((file) => {
-        // Check if this file already exists in uploadFiles
         const existingFile = uploadFiles.find(
           (existing) => existing.id === file.id
         )
         if (existingFile) {
-          // Keep existing file as-is (preserves compressed state)
           return existingFile
         } else {
-          // New file - set to uploading
           return {
             ...file,
             originalSize: file.file.size,
@@ -97,20 +97,18 @@ export function Dropzone({
       onFilesChange?.(newFiles)
     },
   })
-  // Compress images when they're added
+
   useEffect(() => {
     const compressFiles = async () => {
       const filesToCompress = uploadFiles.filter(
         (f) => f.status === "uploading" && f.file instanceof File
       )
 
-      // Set random progress for uninitialized files
       const hasUninitialized = filesToCompress.some(
         (f) => !f.progressInitialized
       )
 
       if (hasUninitialized) {
-        // Update state with random progress
         setUploadFiles((prev) =>
           prev.map((f) => {
             const needsInit = filesToCompress.find(
@@ -126,23 +124,20 @@ export function Dropzone({
             return f
           })
         )
-        return // Wait for next effect run to compress
+        return
       }
 
       await Promise.all(
         filesToCompress.map(async (file) => {
           try {
-            // Run compression
             const result = await compress(file.file as File, {
               quality: config.quality,
             })
 
-            // Add timestamp to compressed filename
             const timestamp = Date.now()
             const nameWithoutExtension = result.name.replace(/\.[^/.]+$/, "")
             const compressedFileName = `${nameWithoutExtension}-${timestamp}-compressed.webp`
 
-            // Update with completed status
             setUploadFiles((prev) =>
               prev.map((f) =>
                 f.id === file.id
@@ -161,8 +156,7 @@ export function Dropzone({
                   : f
               )
             )
-          } catch (error) {
-            // Handle compression error
+          } catch {
             setUploadFiles((prev) =>
               prev.map((f) =>
                 f.id === file.id
@@ -216,7 +210,7 @@ export function Dropzone({
       window.removeEventListener("dragenter", handleWindowDragEnter)
       window.removeEventListener("dragleave", handleWindowDragLeave)
     }
-  }, [])
+  }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop])
 
   const retryUpload = (fileId: string) => {
     setUploadFiles((prev) =>
@@ -227,25 +221,18 @@ export function Dropzone({
               progress: 0,
               status: "uploading" as const,
               error: undefined,
+              progressInitialized: false,
             }
           : file
       )
     )
   }
+
   const removeUploadFile = (fileId: string) => {
     setUploadFiles((prev) => prev.filter((file) => file.id !== fileId))
     removeFile(fileId)
   }
-  const getFileIcon = (file: File | FileMetadata) => {
-    const type = file instanceof File ? file.type : file.type
-    if (type.startsWith("image/"))
-      return (
-        <HugeiconsIcon icon={ImageIcon} strokeWidth={2} className="size-4" />
-      )
-    return (
-      <HugeiconsIcon icon={File02Icon} strokeWidth={2} className="size-4" />
-    )
-  }
+
   const completedCount = uploadFiles.filter(
     (f) => f.status === "completed"
   ).length
@@ -254,12 +241,41 @@ export function Dropzone({
     (f) => f.status === "uploading"
   ).length
 
+  const totalOriginalSize = uploadFiles
+    .filter((f) => f.status === "completed" && f.originalSize)
+    .reduce((acc, f) => acc + (f.originalSize || 0), 0)
+
+  const totalCompressedSize = uploadFiles
+    .filter((f) => f.status === "completed")
+    .reduce((acc, f) => acc + f.file.size, 0)
+
+  const totalSavings = totalOriginalSize > 0
+    ? Math.round(((totalOriginalSize - totalCompressedSize) / totalOriginalSize) * 100)
+    : 0
+
+  const downloadFile = async (fileItem: FileUploadItem) => {
+    if (!fileItem.preview) return
+    const link = document.createElement("a")
+    link.href = fileItem.preview
+    link.download = fileItem.file.name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const downloadAllFiles = async () => {
+    const completedFiles = uploadFiles.filter((f) => f.status === "completed")
+    if (completedFiles.length === 0) return
+
+    if (completedFiles.length === 1) {
+      downloadFile(completedFiles[0])
+      return
+    }
+
     const zip = new JSZip()
     const timestamp = Date.now()
 
-    // Add all files to zip
-    for (const file of uploadFiles) {
+    for (const file of completedFiles) {
       if (file.preview) {
         const response = await fetch(file.preview)
         const blob = await response.blob()
@@ -267,7 +283,6 @@ export function Dropzone({
       }
     }
 
-    // Generate and download zip
     const zipBlob = await zip.generateAsync({ type: "blob" })
     const link = document.createElement("a")
     link.href = URL.createObjectURL(zipBlob)
@@ -278,16 +293,22 @@ export function Dropzone({
     URL.revokeObjectURL(link.href)
   }
 
+  const handleClearAll = () => {
+    setUploadFiles([])
+    clearFiles()
+  }
+
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full space-y-6", className)}>
       {/* Upload Area */}
       <div
         className={cn(
-          "relative rounded-lg border border-dashed bg-background p-8 text-center transition-colors",
+          "relative cursor-pointer rounded-2xl border-2 border-dashed bg-card p-8 text-center transition-all duration-200 md:p-12",
           isDragging
-            ? "border-primary bg-primary/5"
-            : "border-muted-foreground/25 hover:border-muted-foreground/50"
+            ? "border-primary bg-primary/5 shadow-lg shadow-primary/10"
+            : "border-border hover:border-primary/50 hover:bg-muted/30"
         )}
+        onClick={openFileDialog}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
@@ -297,196 +318,130 @@ export function Dropzone({
         <div className="flex flex-col items-center gap-4">
           <div
             className={cn(
-              "flex h-16 w-16 items-center justify-center rounded-full",
-              isDragging ? "bg-primary/10" : "bg-muted"
+              "flex size-16 items-center justify-center rounded-2xl transition-all duration-200",
+              isDragging
+                ? "scale-110 bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
             )}
           >
             <HugeiconsIcon
-              icon={Upload01Icon}
-              strokeWidth={2}
-              className={cn(
-                "h-6",
-                isDragging ? "text-primary" : "text-muted-foreground"
-              )}
+              icon={isDragging ? ArrowDown01Icon : CloudUploadIcon}
+              strokeWidth={1.5}
+              size={28}
             />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-semibold">Upload your files</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              {isDragging ? "Drop your images here" : "Drop images or click to upload"}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Drag and drop files here or click to browse
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Support for multiple file types up to {formatBytes(maxSize)} each
+              JPEG, PNG, WebP, AVIF, GIF up to {formatBytes(maxSize)}
             </p>
           </div>
-          <Button onClick={openFileDialog}>
-            <HugeiconsIcon
-              icon={Upload01Icon}
-              strokeWidth={2}
-              className="h-4 w-4"
-            />
-            Select files
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              openFileDialog()
+            }}
+            size="lg"
+            className="mt-2"
+          >
+            Select Images
           </Button>
         </div>
       </div>
 
+      {/* Controls Panel */}
       <Controls />
-      {/* Upload Stats */}
+
+      {/* Results Section */}
       {uploadFiles.length > 0 && (
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-medium">Compressed Images</h4>
-            <div className="flex items-center gap-2">
-              {completedCount > 0 && (
-                <Badge size="sm" variant="success-light">
-                  Completed: {completedCount}
-                </Badge>
-              )}
-              {errorCount > 0 && (
-                <Badge size="sm" variant="destructive">
-                  Failed: {errorCount}
-                </Badge>
-              )}
-              {uploadingCount > 0 && (
-                <Badge size="sm" variant="secondary">
-                  Uploading: {uploadingCount}
-                </Badge>
+        <div className="space-y-4">
+          {/* Stats Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-card p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-foreground">
+                {uploadFiles.length} {uploadFiles.length === 1 ? "image" : "images"}
+              </span>
+              <div className="flex items-center gap-2">
+                {completedCount > 0 && (
+                  <Badge size="sm" variant="success-light" radius="full">
+                    {completedCount} completed
+                  </Badge>
+                )}
+                {uploadingCount > 0 && (
+                  <Badge size="sm" variant="secondary" radius="full">
+                    {uploadingCount} processing
+                  </Badge>
+                )}
+                {errorCount > 0 && (
+                  <Badge size="sm" variant="destructive-light" radius="full">
+                    {errorCount} failed
+                  </Badge>
+                )}
+              </div>
+              {totalSavings > 0 && (
+                <div className="hidden text-sm text-muted-foreground sm:block">
+                  <span className="font-medium text-success">{totalSavings}%</span> saved ({formatBytes(totalOriginalSize - totalCompressedSize)})
+                </div>
               )}
             </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={downloadAllFiles}
+                variant="default"
+                size="sm"
+                disabled={completedCount === 0}
+              >
+                <HugeiconsIcon icon={Download01Icon} size={14} />
+                Download All
+              </Button>
+              <Button
+                onClick={handleClearAll}
+                variant="outline"
+                size="sm"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={14} />
+                Clear
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={downloadAllFiles}
-              variant="outline"
-              size="sm"
-              disabled={uploadFiles.length === 0}
-            >
-              <HugeiconsIcon
-                icon={Upload01Icon}
-                strokeWidth={2}
-                className="h-4 w-4"
+
+          {/* Image Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {uploadFiles.map((fileItem: FileUploadItem) => (
+              <ImageCard
+                key={fileItem.id}
+                fileItem={fileItem}
+                onDownload={() => downloadFile(fileItem)}
+                onRemove={() => removeUploadFile(fileItem.id)}
+                onRetry={() => retryUpload(fileItem.id)}
               />
-              Download all
-            </Button>
-            <Button onClick={clearFiles} variant="outline" size="sm">
-              Clear all
-            </Button>
+            ))}
           </div>
         </div>
       )}
-      {/* File List */}
-      {uploadFiles.length > 0 && (
-        <div className="mt-4 space-y-3">
-          {uploadFiles.map((fileItem: FileUploadItem) => (
-            <a
-              href={fileItem.preview}
-              download={fileItem.file.name}
-              key={fileItem.id}
-              className="block rounded-lg border border-border bg-card p-2.5 transition-colors hover:bg-card/60"
-            >
-              <div className="flex items-start gap-2.5">
-                {/* File Icon */}
-                <div className="shrink-0">
-                  {fileItem.preview &&
-                  fileItem.file.type.startsWith("image/") ? (
-                    <img
-                      src={fileItem.preview}
-                      alt={fileItem.file.name}
-                      className="h-12 w-12 rounded-lg border object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border text-muted-foreground">
-                      {getFileIcon(fileItem.file)}
-                    </div>
-                  )}
-                </div>
-                {/* File Info */}
-                <div className="min-w-0 flex-1">
-                  <div className="mt-0.75 flex items-center justify-between">
-                    <p className="inline-flex flex-col justify-center gap-1 truncate font-medium">
-                      <span className="text-sm">{fileItem.file.name}</span>
-                      {fileItem.status === "completed" &&
-                      fileItem.originalSize ? (
-                        <span className="text-xs text-muted-foreground">
-                          {formatBytes(fileItem.originalSize)} →{" "}
-                          {formatBytes(fileItem.file.size)} (
-                          {Math.round(
-                            ((fileItem.originalSize - fileItem.file.size) /
-                              fileItem.originalSize) *
-                              100
-                          )}
-                          % saved)
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {formatBytes(fileItem.file.size)}
-                        </span>
-                      )}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      {/* Remove Button */}
-                      <Button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          removeUploadFile(fileItem.id)
-                        }}
-                        variant="ghost"
-                        size="icon"
-                        className="size-6 text-muted-foreground hover:bg-transparent hover:opacity-100"
-                      >
-                        <HugeiconsIcon
-                          icon={MultiplicationSignIcon}
-                          strokeWidth={2}
-                          className="size-4"
-                        />
-                      </Button>
-                    </div>
-                  </div>
-                  {/* Progress Bar */}
-                  {fileItem.status === "uploading" && (
-                    <div className="mt-2">
-                      <Progress value={fileItem.progress} className="h-1" />
-                    </div>
-                  )}
-                  {/* Error Message */}
-                  {fileItem.status === "error" && fileItem.error && (
-                    <Alert variant="destructive" className="mt-2 px-2 py-1">
-                      <HugeiconsIcon
-                        icon={AlertCircleIcon}
-                        strokeWidth={2}
-                        className="size-4"
-                      />
-                      <AlertTitle className="text-xs">
-                        {fileItem.error}
-                      </AlertTitle>
-                      <AlertAction>
-                        <Button
-                          onClick={() => retryUpload(fileItem.id)}
-                          variant="ghost"
-                          size="icon"
-                          className="size-6 text-muted-foreground hover:bg-transparent hover:opacity-100"
-                        >
-                          <HugeiconsIcon
-                            icon={Refresh04Icon}
-                            strokeWidth={2}
-                            className="size-3.5"
-                          />
-                        </Button>
-                      </AlertAction>
-                    </Alert>
-                  )}
-                </div>
-              </div>
-            </a>
-          ))}
+
+      {/* Empty State */}
+      {uploadFiles.length === 0 && (
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-muted">
+            <HugeiconsIcon icon={ImageIcon} size={24} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">No images yet</p>
+            <p className="text-sm text-muted-foreground">
+              Upload images to start compressing
+            </p>
+          </div>
         </div>
       )}
+
       {/* Error Messages */}
       {errors.length > 0 && (
-        <Alert variant="destructive" className="mt-5">
+        <Alert variant="destructive">
           <HugeiconsIcon icon={AlertCircleIcon} strokeWidth={2} />
-          <AlertTitle>File upload error(s)</AlertTitle>
+          <AlertTitle>Upload Error</AlertTitle>
           <AlertDescription>
             {errors.map((error, index) => (
               <p key={index} className="last:mb-0">
@@ -496,6 +451,138 @@ export function Dropzone({
           </AlertDescription>
         </Alert>
       )}
+    </div>
+  )
+}
+
+interface ImageCardProps {
+  fileItem: FileUploadItem
+  onDownload: () => void
+  onRemove: () => void
+  onRetry: () => void
+}
+
+function ImageCard({ fileItem, onDownload, onRemove, onRetry }: ImageCardProps) {
+  const isCompleted = fileItem.status === "completed"
+  const isError = fileItem.status === "error"
+  const isUploading = fileItem.status === "uploading"
+
+  const savings = isCompleted && fileItem.originalSize
+    ? Math.round(((fileItem.originalSize - fileItem.file.size) / fileItem.originalSize) * 100)
+    : 0
+
+  return (
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl border bg-card transition-all",
+        isError ? "border-destructive/50" : "border-border",
+        isCompleted && "hover:shadow-md"
+      )}
+    >
+      {/* Image Preview */}
+      <div className="relative aspect-video overflow-hidden bg-muted">
+        {fileItem.preview ? (
+          <img
+            src={fileItem.preview}
+            alt={fileItem.file.name}
+            className="size-full object-cover"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center">
+            <HugeiconsIcon icon={ImageIcon} size={32} className="text-muted-foreground" />
+          </div>
+        )}
+
+        {/* Overlay for completed images */}
+        {isCompleted && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/80 opacity-0 transition-opacity group-hover:opacity-100">
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                onDownload()
+              }}
+              size="sm"
+              variant="default"
+            >
+              <HugeiconsIcon icon={Download01Icon} size={14} />
+              Download
+            </Button>
+          </div>
+        )}
+
+        {/* Progress overlay */}
+        {isUploading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80">
+            <div className="w-3/4">
+              <Progress value={fileItem.progress} className="h-1.5" />
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Compressing...</p>
+          </div>
+        )}
+
+        {/* Error overlay */}
+        {isError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/90">
+            <HugeiconsIcon icon={AlertCircleIcon} size={24} className="text-destructive" />
+            <p className="mt-2 text-xs text-destructive">{fileItem.error}</p>
+            <Button
+              onClick={(e) => {
+                e.preventDefault()
+                onRetry()
+              }}
+              size="sm"
+              variant="outline"
+              className="mt-2"
+            >
+              <HugeiconsIcon icon={Refresh04Icon} size={14} />
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Savings badge */}
+        {isCompleted && savings > 0 && (
+          <Badge
+            variant="success"
+            size="sm"
+            radius="full"
+            className="absolute right-2 top-2"
+          >
+            -{savings}%
+          </Badge>
+        )}
+      </div>
+
+      {/* File Info */}
+      <div className="p-3">
+        <p className="truncate text-sm font-medium text-foreground">
+          {fileItem.file.name.replace(/-\d+-compressed\.webp$/, ".webp")}
+        </p>
+        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {isCompleted && fileItem.originalSize ? (
+            <>
+              <span>{formatBytes(fileItem.originalSize)}</span>
+              <HugeiconsIcon icon={ArrowRight01Icon} size={12} />
+              <span className="font-medium text-foreground">{formatBytes(fileItem.file.size)}</span>
+            </>
+          ) : (
+            <span>{formatBytes(fileItem.file.size)}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Remove button */}
+      <button
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onRemove()
+        }}
+        className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-background/80 text-muted-foreground opacity-0 transition-all hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
+        style={{ display: isCompleted && savings > 0 ? "none" : undefined }}
+      >
+        <HugeiconsIcon icon={Delete02Icon} size={12} />
+      </button>
     </div>
   )
 }
