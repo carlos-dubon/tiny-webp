@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { Dropzone } from "@/components/dropzone"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Rocket01Icon, FlashIcon, ShieldCheckIcon } from "@hugeicons/core-free-icons"
+import { Rocket01Icon, FlashIcon, UserShield01Icon } from "@hugeicons/core-free-icons"
 
 export const Route = createFileRoute("/")({ component: App })
 
@@ -29,7 +29,7 @@ function App() {
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                <HugeiconsIcon icon={ShieldCheckIcon} size={16} className="text-primary" />
+                <HugeiconsIcon icon={UserShield01Icon} size={16} className="text-primary" />
               </div>
               <span>100% private</span>
             </div>
