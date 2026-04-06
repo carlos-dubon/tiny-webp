@@ -1,4 +1,4 @@
-import { useEffect, useState, type DragEvent as ReactDragEvent } from "react"
+import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from "react"
 import JSZip from "jszip"
 import {
   useFileUpload,
@@ -58,6 +58,14 @@ export function Dropzone({
 }: ProgressUploadProps) {
   const [config] = useAtom(configAtom)
   const [uploadFiles, setUploadFiles] = useState<FileUploadItem[]>([])
+  
+  // Refs to hold the latest handler functions to avoid stale closures in window event listeners
+  const handlersRef = useRef({
+    handleDragEnter: (e: DragEvent) => {},
+    handleDragLeave: (e: DragEvent) => {},
+    handleDragOver: (e: DragEvent) => {},
+    handleDrop: (e: DragEvent) => {},
+  })
   const [
     { isDragging, errors },
     {
@@ -176,27 +184,46 @@ export function Dropzone({
     compressFiles()
   }, [uploadFiles, config])
 
+  // Keep handlers ref up to date
+  useEffect(() => {
+    handlersRef.current = {
+      handleDragEnter: (e: DragEvent) => {
+        e.preventDefault()
+        handleDragEnter(e as unknown as ReactDragEvent<HTMLElement>)
+      },
+      handleDragLeave: (e: DragEvent) => {
+        e.preventDefault()
+        handleDragLeave(e as unknown as ReactDragEvent<HTMLElement>)
+      },
+      handleDragOver: (e: DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        handleDragOver(e as unknown as ReactDragEvent<HTMLElement>)
+      },
+      handleDrop: (e: DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        handleDrop(e as unknown as ReactDragEvent<HTMLElement>)
+      },
+    }
+  })
+
+  // Set up window event listeners once
   useEffect(() => {
     const handleWindowDragOver = (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      handleDragOver(e as unknown as ReactDragEvent<HTMLElement>)
+      handlersRef.current.handleDragOver(e)
     }
 
     const handleWindowDrop = (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      handleDrop(e as unknown as ReactDragEvent<HTMLElement>)
+      handlersRef.current.handleDrop(e)
     }
 
     const handleWindowDragEnter = (e: DragEvent) => {
-      e.preventDefault()
-      handleDragEnter(e as unknown as ReactDragEvent<HTMLElement>)
+      handlersRef.current.handleDragEnter(e)
     }
 
     const handleWindowDragLeave = (e: DragEvent) => {
-      e.preventDefault()
-      handleDragLeave(e as unknown as ReactDragEvent<HTMLElement>)
+      handlersRef.current.handleDragLeave(e)
     }
 
     window.addEventListener("dragover", handleWindowDragOver)
@@ -210,7 +237,7 @@ export function Dropzone({
       window.removeEventListener("dragenter", handleWindowDragEnter)
       window.removeEventListener("dragleave", handleWindowDragLeave)
     }
-  }, [handleDragEnter, handleDragLeave, handleDragOver, handleDrop])
+  }, [])
 
   const retryUpload = (fileId: string) => {
     setUploadFiles((prev) =>
