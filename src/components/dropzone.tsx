@@ -26,6 +26,9 @@ import {
   Upload01Icon,
 } from "@hugeicons/core-free-icons"
 import { formatBytes } from "@/lib/format-bytes"
+import { Controls } from "./controls"
+import { useAtom } from "jotai"
+import { configAtom } from "@/state/config"
 interface FileUploadItem extends FileWithPreview {
   progress: number
   status: "uploading" | "completed" | "error"
@@ -49,6 +52,7 @@ export function Dropzone({
   className,
   onFilesChange,
 }: ProgressUploadProps) {
+  const [config] = useAtom(configAtom)
   const [uploadFiles, setUploadFiles] = useState<FileUploadItem[]>([])
   const [
     { isDragging, errors },
@@ -76,11 +80,8 @@ export function Dropzone({
           (existing) => existing.id === file.id
         )
         if (existingFile) {
-          // Preserve existing file status and progress
-          return {
-            ...existingFile,
-            ...file, // Update any changed properties from the file
-          }
+          // Keep existing file as-is (preserves compressed state)
+          return existingFile
         } else {
           // New file - set to uploading
           return {
@@ -132,7 +133,9 @@ export function Dropzone({
         filesToCompress.map(async (file) => {
           try {
             // Run compression
-            const result = await compress(file.file as File)
+            const result = await compress(file.file as File, {
+              quality: config.quality,
+            })
 
             // Add timestamp to compressed filename
             const timestamp = Date.now()
@@ -177,7 +180,7 @@ export function Dropzone({
     }
 
     compressFiles()
-  }, [uploadFiles])
+  }, [uploadFiles, config])
 
   useEffect(() => {
     const handleWindowDragOver = (e: DragEvent) => {
@@ -326,6 +329,8 @@ export function Dropzone({
           </Button>
         </div>
       </div>
+
+      <Controls />
       {/* Upload Stats */}
       {uploadFiles.length > 0 && (
         <div className="mt-6 flex items-center justify-between">
